@@ -1,0 +1,6 @@
+Collecting openpyxl
+  Using cached openpyxl-3.1.5-py2.py3-none-any.whl.metadata (2.5 kB)
+Requirement already satisfied: et-xmlfile in c:\users\barra\appdata\local\packages\pythonsoftwarefoundation.python.3.11_qbz5n2kfra8p0\localcache\local-packages\python311\site-packages (from openpyxl) (2.0.0)
+Using cached openpyxl-3.1.5-py2.py3-none-any.whl (250 kB)
+Installing collected packages: openpyxl
+Successfully installed openpyxl-3.1.5

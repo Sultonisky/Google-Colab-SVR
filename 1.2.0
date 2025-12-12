@@ -1,0 +1,9 @@
+Collecting scikit-learn
+  Using cached scikit_learn-1.7.2-cp311-cp311-win_amd64.whl.metadata (11 kB)
+Requirement already satisfied: numpy>=1.22.0 in c:\users\barra\appdata\local\packages\pythonsoftwarefoundation.python.3.11_qbz5n2kfra8p0\localcache\local-packages\python311\site-packages (from scikit-learn) (2.3.5)
+Requirement already satisfied: scipy>=1.8.0 in c:\users\barra\appdata\local\packages\pythonsoftwarefoundation.python.3.11_qbz5n2kfra8p0\localcache\local-packages\python311\site-packages (from scikit-learn) (1.16.3)
+Requirement already satisfied: joblib>=1.2.0 in c:\users\barra\appdata\local\packages\pythonsoftwarefoundation.python.3.11_qbz5n2kfra8p0\localcache\local-packages\python311\site-packages (from scikit-learn) (1.5.2)
+Requirement already satisfied: threadpoolctl>=3.1.0 in c:\users\barra\appdata\local\packages\pythonsoftwarefoundation.python.3.11_qbz5n2kfra8p0\localcache\local-packages\python311\site-packages (from scikit-learn) (3.6.0)
+Using cached scikit_learn-1.7.2-cp311-cp311-win_amd64.whl (8.9 MB)
+Installing collected packages: scikit-learn
+Successfully installed scikit-learn-1.7.2
