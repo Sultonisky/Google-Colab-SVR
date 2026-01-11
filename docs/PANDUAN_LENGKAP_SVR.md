@@ -14,13 +14,15 @@
 ---
 
 ## 🎯 Pengenalan
-Mode ini hanya menghitung SVR linear secara manual (kolom `X`) dan membuat file gap antara `prediksi_svr` (Excel) dan `X` (program). Tidak ada forecasting masa depan.
+Program ini menghitung SVR linear secara manual (kolom `X`) menggunakan formula: `y = w1 × rooms_sold + w2 × rooms_available + b`. Program ini **tidak melakukan forecasting masa depan**, hanya perhitungan manual berdasarkan parameter yang sudah ditentukan.
 
 ### Fitur Utama
-- Perhitungan manual SVR: `y = w1 × rooms_sold + w2 × rooms_available + b`
-- Gap `prediksi_svr` (Excel) vs `X` (program) dengan toleransi noise
-- Auto-detect kolom (bisa override manual)
-- Output rapi: dataset & gap di `result/dataset`, gambar (jika visualisasi diaktifkan) di `result/img`
+- ✅ Perhitungan manual SVR: `y = w1 × rooms_sold + w2 × rooms_available + b`
+- ✅ Auto-detect kolom `rooms_sold` dan `rooms_available` (bisa override manual)
+- ✅ Step-by-step calculation untuk 10 baris pertama
+- ✅ Penjelasan detail perhitungan SVR
+- ✅ Visualisasi hasil perhitungan manual SVR (4 plot: time series, distribusi, scatter rooms_sold vs X, scatter rooms_available vs X)
+- ✅ Output rapi: dataset dengan kolom `X` di `result/dataset`, gambar visualisasi di `result/img`
 
 ---
 
@@ -30,10 +32,10 @@ pip install -r programs/require/requirements.txt
 ```
 
 Dataset:
-- `dataset/dataset_bali_2017_2025.xlsx`
-- `dataset/dataset_lombok_2017_2025.xlsx`
+- `dataset/dataset_bali_2017_2025.xlsx` (untuk program Bali)
+- `dataset/dataset_lombok_2017_2025.xlsx` (untuk program Lombok)
 
-Kolom wajib/sinonim: `rooms_sold`, `rooms_available`; kolom `prediksi_svr` dibutuhkan untuk analisis gap.
+Kolom wajib/sinonim: `rooms_sold`, `rooms_available`. Program akan auto-detect kolom ini jika ada dengan nama yang berbeda.
 
 ---
 
@@ -46,15 +48,23 @@ python programs\SVR_Manual_Bali.py
 python programs\SVR_Manual_Lombok.py
 ```
 
-Alur:
-1) Load dataset (sheet pertama).  
-2) Auto-detect `rooms_sold` / `rooms_available` (bisa set manual).  
-3) Hitung kolom `X` dengan rumus manual.  
-4) Tampilkan step-by-step 10 baris pertama.  
-5) Simpan dataset+X ke `result/dataset/dataset_...with_svr_*.xlsx`.  
-6) Simpan gap `prediksi_svr` vs `X` ke `result/dataset/gap_prediksi_svr_vs_X_*.xlsx`.  
+Alur Program:
+1. **Load dataset** dari Excel 
+   - Bali: sheet index 0 (sheet pertama)
+   - Lombok: sheet index 0 (sheet pertama, bisa diubah sesuai kebutuhan)
+2. **Auto-detect kolom** `rooms_sold` dan `rooms_available` (bisa override manual jika perlu)
+3. **Hitung kolom `X`** dengan rumus manual SVR: `X = w1 × rooms_sold + w2 × rooms_available + b`
+   - Parameter default: `w1=0.01152`, `w2=-0.000843`, `b=0.02091`
+4. **Tampilkan step-by-step** perhitungan untuk 10 baris pertama
+5. **Tampilkan penjelasan** detail perhitungan SVR
+6. **Generate visualisasi** hasil perhitungan manual SVR (4 plot):
+   - Time series nilai X
+   - Distribusi nilai X
+   - Scatter plot rooms_sold vs X
+   - Scatter plot rooms_available vs X
+7. **Simpan dataset dengan kolom `X`** ke `result/dataset/dataset_...with_svr_*.xlsx`
 
-Opsional (jika mau visualisasi historis): aktifkan pipeline `prepare_features → split_data → scale_data → train_model → evaluate_model → visualize_results`. Gambar ke `result/img/`.
+**Catatan:** Program ini fokus pada perhitungan manual SVR dan visualisasi. Tidak ada analisis gap atau forecasting masa depan.
 
 ---
 
@@ -774,43 +784,133 @@ X = 0.007701
 
 ---
 
-## 📈 Analisis Gap `prediksi_svr` vs `X`
-```
-Gap      = X - prediksi_svr
-Gap_abs  = |Gap|
-Gap_pct  = (Gap / prediksi_svr) × 100   (jika prediksi_svr ≠ 0)
-```
-Toleransi kecil di-0-kan untuk menghilangkan noise floating point.
+## 📊 Visualisasi Hasil Perhitungan Manual SVR
 
-Interpretasi:
-- Gap > 0: nilai program (X) lebih besar dari prediksi Excel.
-- Gap < 0: nilai program (X) lebih kecil.
-- Gap_pct memberi konteks relatif; hati-hati jika denominator kecil.
+Program secara otomatis menghasilkan visualisasi hasil perhitungan manual SVR dengan 4 plot:
+
+### Plot 1: Time Series - Nilai X seiring waktu
+- Menampilkan nilai `X` untuk setiap periode (index)
+- Garis mean dan ±1 standard deviation
+- Memberikan gambaran trend nilai `X` seiring waktu
+
+### Plot 2: Histogram/Distribusi - Distribusi nilai X
+- Menampilkan distribusi frekuensi nilai `X`
+- Garis mean dan median
+- Memberikan gambaran sebaran nilai `X`
+
+### Plot 3: Scatter Plot - Hubungan `rooms_sold` vs `X`
+- Menampilkan hubungan antara `rooms_sold` dengan nilai `X`
+- Trend line linear untuk melihat korelasi
+- Memvalidasi bahwa semakin banyak kamar terjual, nilai `X` cenderung naik
+
+### Plot 4: Scatter Plot - Hubungan `rooms_available` vs `X`
+- Menampilkan hubungan antara `rooms_available` dengan nilai `X`
+- Trend line linear untuk melihat korelasi
+- Memvalidasi bahwa semakin banyak kamar tersedia (kosong), nilai `X` cenderung turun
+
+**File Output:** `result/img/SVR_Manual_Bali_visualization.png` atau `SVR_Manual_Lombok_visualization.png`
 
 ---
 
 ## 📁 Output yang Dihasilkan
-- `result/dataset/dataset_bali_with_svr_*.xlsx`  
-- `result/dataset/dataset_lombok_with_svr_*.xlsx`  
-- `result/dataset/gap_prediksi_svr_vs_X_bali.xlsx`  
-- `result/dataset/gap_prediksi_svr_vs_X_lombok.xlsx`  
-- (Opsional, jika visualisasi diaktifkan) `result/img/SVR_Manual_Bali_results.png`, `result/img/SVR_Manual_Lombok_results.png`
+
+### Dataset dengan Kolom X
+- `result/dataset/dataset_bali_with_svr_YYYYMMDD_HHMMSS.xlsx`  
+- `result/dataset/dataset_lombok_with_svr_YYYYMMDD_HHMMSS.xlsx`  
+
+File ini berisi dataset asli ditambah kolom `X` yang merupakan hasil perhitungan manual SVR.
+
+### Visualisasi
+- `result/img/SVR_Manual_Bali_visualization.png`  
+- `result/img/SVR_Manual_Lombok_visualization.png`  
+
+File gambar berisi 4 plot visualisasi hasil perhitungan manual SVR (time series, distribusi, scatter rooms_sold vs X, scatter rooms_available vs X).
 
 ---
 
 ## 🔧 Troubleshooting
-- Kolom tidak ditemukan: pastikan ada `rooms_sold` / `rooms_available`; bisa set manual di argumen.
-- Permission denied saat simpan Excel: tutup file yang terbuka; fallback nama bertimestamp.
-- ModuleNotFoundError: `pip install -r programs/require/requirements.txt`.
+
+### Kolom Tidak Ditemukan
+**Error:** `[ERROR] Column 'rooms_sold' not found!`
+
+**Solusi:**
+1. Pastikan dataset memiliki kolom `rooms_sold` dan `rooms_available` (atau sinonimnya)
+2. Program akan auto-detect kolom dengan nama berikut:
+   - `rooms_sold`: `'rooms_sold'`, `'room_sold'`, `'sold'`, `'rooms_sold_count'`, `'jumlah_kamar_terjual'`, `'kamar_terjual'`
+   - `rooms_available`: `'rooms_available'`, `'room_available'`, `'available'`, `'rooms_available_count'`, `'jumlah_kamar_tersedia'`, `'kamar_tersedia'`
+3. Jika auto-detect gagal, modifikasi program untuk set manual:
+   ```python
+   forecaster.calculate_manual_svr(
+       rooms_sold_col='nama_kolom_rooms_sold_anda',
+       rooms_available_col='nama_kolom_rooms_available_anda',
+       w1=w1, w2=w2, b=b,
+       output_col='X',
+       n_rows=10
+   )
+   ```
+
+### Permission Denied Saat Simpan Excel
+**Error:** `[ERROR] Excel file is currently open. Please close the Excel file and try again.`
+
+**Solusi:**
+1. Tutup file Excel yang sedang terbuka
+2. Program akan otomatis mencoba dengan nama file berbeda (dengan timestamp)
+3. Jika masih gagal, cek apakah folder `result/dataset` ada dan bisa diakses
+
+### ModuleNotFoundError
+**Error:** `ModuleNotFoundError: No module named 'pandas'` (atau modul lainnya)
+
+**Solusi:**
+```bash
+pip install -r programs/require/requirements.txt
+```
+
+Atau install manual:
+```bash
+pip install pandas numpy scikit-learn matplotlib openpyxl
+```
+
+### Sheet Tidak Ditemukan (Lombok)
+**Error:** `Error saat memuat data: ...`
+
+**Solusi:**
+- Untuk Lombok, pastikan sheet index 1 ada di file Excel
+- Jika sheet index berbeda, modifikasi di `main()`:
+  ```python
+  # Di file SVR_Manual_Lombok.py, baris ~681
+  if not forecaster.load_data(sheet_name=1):  # Ubah angka 1 sesuai sheet yang benar
+  ```
+- Atau gunakan sheet name:
+  ```python
+  if not forecaster.load_data(sheet_name="nama_sheet_anda"):
+  ```
 
 ---
 
-## ✅ Checklist
+## ✅ Checklist Fitur Program
+
+### Fitur yang Tersedia
 - [x] Perhitungan manual SVR (kolom `X`)
-- [x] Auto-detect kolom / manual override
-- [x] Step-by-step 10 baris pertama
-- [x] Analisis gap `prediksi_svr` vs `X`
-- [x] Simpan hasil ke `result/dataset`
-- [x] Error handling kolom & permission
-- [ ] (Opsional) Latih model & visualisasi historis → `result/img`
+- [x] Auto-detect kolom `rooms_sold` dan `rooms_available`
+- [x] Manual override kolom jika auto-detect gagal
+- [x] Step-by-step calculation untuk 10 baris pertama
+- [x] Penjelasan detail perhitungan SVR
+- [x] Visualisasi hasil perhitungan manual SVR (4 plot)
+- [x] Simpan dataset dengan kolom `X` ke `result/dataset`
+- [x] Simpan visualisasi ke `result/img`
+- [x] Error handling untuk kolom tidak ditemukan
+- [x] Error handling untuk permission denied saat save Excel
+- [x] Fallback nama file dengan timestamp jika ada konflik
+
+### Perbedaan Program Bali dan Lombok
+
+| Aspek | Bali | Lombok |
+|-------|------|--------|
+| **File Dataset** | `dataset_bali_2017_2025.xlsx` | `dataset_lombok_2017_2025.xlsx` |
+| **Sheet** | Sheet index 0 (sheet pertama) | Sheet index 0 (sheet pertama) |
+| **Parameter SVR** | `w1=0.01152`, `w2=-0.000843`, `b=0.02091` | `w1=0.01152`, `w2=-0.000843`, `b=0.02091` |
+| **Output Dataset** | `dataset_bali_with_svr_*.xlsx` | `dataset_lombok_with_svr_*.xlsx` |
+| **Output Visualisasi** | `SVR_Manual_Bali_visualization.png` | `SVR_Manual_Lombok_visualization.png` |
+
+**Catatan:** Kedua program menggunakan parameter SVR yang sama dan memiliki fitur yang identik, hanya berbeda pada file dataset dan nama output.
 
