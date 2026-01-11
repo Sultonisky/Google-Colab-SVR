@@ -1,10 +1,10 @@
 # 📓 Panduan Menjalankan Program Manual SVR di Google Colab
 
-Mode: hanya perhitungan manual SVR (kolom `X`) dan gap `prediksi_svr` vs `X`. Tidak ada forecasting masa depan.
+Mode: hanya perhitungan manual SVR (kolom `X`) dan visualisasi hasil SVR.
 
 ## Urutan Cell Disarankan
 
-**Cell 1 — Install dependencies**
+**Cell 1 — Install dependencies (import)**
 ```python
 !pip install -r requirements.txt
 ```
@@ -37,7 +37,7 @@ else:
 
 ```
 
-**Cell 3 — Jalankan manual SVR & buat gap**
+**Cell 3 — Jalankan manual SVR**
 ```python
 import importlib.util
 
