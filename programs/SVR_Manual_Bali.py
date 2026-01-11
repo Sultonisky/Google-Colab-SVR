@@ -14,7 +14,7 @@ import glob
 from pathlib import Path
 warnings.filterwarnings('ignore')
 
-class SVRManual:
+class SVRForecasting:
     def __init__(self, file_path):
         """
         Inisialisasi dengan path file Excel
@@ -363,71 +363,6 @@ class SVRManual:
                 if name.lower() in col.lower() or col.lower() in name.lower():
                     return col
         return None
-    
-    def create_gap_prediksi_svr_vs_X(self, pred_col='prediksi_svr', x_col='X', output_file='gap_prediksi_svr_vs_X.xlsx'):
-        """
-        Membuat file Excel yang berisi gap antara kolom prediksi manual di Excel (prediksi_svr)
-        dengan kolom X (hasil perhitungan program).
-        
-        Parameters:
-        -----------
-        pred_col : str
-            Nama kolom prediksi manual dari Excel (default: 'prediksi_svr')
-        x_col : str
-            Nama kolom hasil perhitungan program (default: 'X')
-        output_file : str
-            Nama file Excel untuk menyimpan hasil gap
-        """
-        if self.data is None:
-            print("[ERROR] Data is not loaded.")
-            return False
-        
-        if pred_col not in self.data.columns:
-            print(f"[ERROR] Column '{pred_col}' not found in dataset.")
-            print(f"Available columns: {list(self.data.columns)}")
-            return False
-        
-        if x_col not in self.data.columns:
-            print(f"[ERROR] Column '{x_col}' not found in dataset.")
-            print(f"Available columns: {list(self.data.columns)}")
-            return False
-        
-        df = self.data[[pred_col, x_col]].copy()
-        initial_rows = len(df)
-        df = df.dropna(subset=[pred_col, x_col])
-        dropped = initial_rows - len(df)
-        if dropped > 0:
-            print(f"[INFO] Dropping {dropped} rows with NaN in '{pred_col}' or '{x_col}'.")
-        
-        df = df.reset_index(drop=True)
-        df['Gap'] = df[x_col] - df[pred_col]
-        df['Gap_abs'] = df['Gap'].abs()
-        df['Gap_pct'] = np.where(df[pred_col] != 0, df['Gap'] / df[pred_col] * 100, np.nan)
-        
-        # Terapkan toleransi: nilai yang sangat kecil dianggap 0
-        tol = 1e-8
-        df.loc[df['Gap'].abs() < tol, 'Gap'] = 0.0
-        df.loc[df['Gap_abs'] < tol, 'Gap_abs'] = 0.0
-        df.loc[df['Gap_pct'].abs() < tol, 'Gap_pct'] = 0.0
-        
-        # Pembulatan agar tampilan rapi
-        df['Gap'] = df['Gap'].round(6)
-        df['Gap_abs'] = df['Gap_abs'].round(6)
-        df['Gap_pct'] = df['Gap_pct'].round(4)
-        
-        try:
-            df.to_excel(output_file, index=False)
-            print(f"[SUCCESS] Gap file saved to '{output_file}'")
-            print(f"Total rows: {len(df)} (after dropping NaN)")
-            print(f"Gap stats - min: {df['Gap'].min():.6f}, max: {df['Gap'].max():.6f}, mean: {df['Gap'].mean():.6f}")
-            return True
-        except PermissionError:
-            print(f"[ERROR] File '{output_file}' is currently open. Please close it and retry.")
-            return False
-        except Exception as e:
-            print(f"[ERROR] Failed to save gap file: {str(e)}")
-            return False
-    
     def calculate_manual_svr(self, rooms_sold_col=None, rooms_available_col=None, 
                             w1=0.01152, w2=-0.000843, b=0.02091, 
                             output_col='X', n_rows=10):
@@ -577,6 +512,153 @@ class SVRManual:
         
         print(explanation)
         print("\n" + "=" * 60)
+    
+    def visualize_manual_svr_results(self, x_col='X', rooms_sold_col=None, rooms_available_col=None):
+        """
+        Visualisasi hasil perhitungan manual SVR (kolom X)
+        
+        Parameters:
+        -----------
+        x_col : str
+            Nama kolom hasil SVR manual (default: 'X')
+        rooms_sold_col : str, optional
+            Nama kolom rooms_sold untuk visualisasi. Jika None, akan dicari otomatis
+        rooms_available_col : str, optional
+            Nama kolom rooms_available untuk visualisasi. Jika None, akan dicari otomatis
+        """
+        print("\n" + "=" * 60)
+        print("VISUALISASI HASIL PERHITUNGAN MANUAL SVR")
+        print("=" * 60)
+        
+        if self.data is None:
+            print("[ERROR] Data is not loaded.")
+            return False
+        
+        if x_col not in self.data.columns:
+            print(f"[ERROR] Column '{x_col}' not found in dataset.")
+            print(f"Available columns: {list(self.data.columns)}")
+            return False
+        
+        # Auto-detect kolom jika tidak diberikan
+        if rooms_sold_col is None:
+            rooms_sold_col = self.find_columns([
+                'rooms_sold', 'room_sold', 'sold', 'rooms_sold_count',
+                'jumlah_kamar_terjual', 'kamar_terjual'
+            ])
+        
+        if rooms_available_col is None:
+            rooms_available_col = self.find_columns([
+                'rooms_available', 'room_available', 'available', 
+                'rooms_available_count', 'jumlah_kamar_tersedia', 'kamar_tersedia'
+            ])
+        
+        # Ambil data
+        x_values = self.data[x_col].values
+        indices = np.arange(len(x_values))
+        
+        # Buat figure dengan 4 subplot
+        fig = plt.figure(figsize=(16, 12))
+        
+        # Plot 1: Time Series - Nilai X seiring waktu
+        ax1 = plt.subplot(2, 2, 1)
+        ax1.plot(indices, x_values, marker='o', markersize=3, linewidth=1.5, color='#2E86AB', label='SVR Manual (X)')
+        ax1.axhline(y=x_values.mean(), color='r', linestyle='--', linewidth=2, label=f'Mean: {x_values.mean():.4f}')
+        ax1.fill_between(indices, x_values.mean() - x_values.std(), 
+                         x_values.mean() + x_values.std(), 
+                         alpha=0.2, color='gray', label=f'±1 Std Dev')
+        ax1.set_title('Time Series: Hasil Perhitungan Manual SVR (X)', fontsize=12, fontweight='bold')
+        ax1.set_xlabel('Periode (Index)', fontsize=10)
+        ax1.set_ylabel('Nilai X (SVR Manual)', fontsize=10)
+        ax1.legend(loc='best')
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Histogram/Distribution - Distribusi nilai X
+        ax2 = plt.subplot(2, 2, 2)
+        n, bins, patches = ax2.hist(x_values, bins=30, edgecolor='black', alpha=0.7, color='#A23B72')
+        x_mean = np.mean(x_values)
+        x_median = np.median(x_values)
+        ax2.axvline(x=x_mean, color='r', linestyle='--', linewidth=2, label=f'Mean: {x_mean:.4f}')
+        ax2.axvline(x=x_median, color='g', linestyle='--', linewidth=2, label=f'Median: {x_median:.4f}')
+        ax2.set_title('Distribusi Nilai X (SVR Manual)', fontsize=12, fontweight='bold')
+        ax2.set_xlabel('Nilai X', fontsize=10)
+        ax2.set_ylabel('Frekuensi', fontsize=10)
+        ax2.legend(loc='best')
+        ax2.grid(True, alpha=0.3, axis='y')
+        
+        # Plot 3: Scatter Plot - Hubungan rooms_sold vs X
+        if rooms_sold_col and rooms_sold_col in self.data.columns:
+            ax3 = plt.subplot(2, 2, 3)
+            rooms_sold = self.data[rooms_sold_col].values
+            # Hapus NaN untuk plotting
+            mask = ~(np.isnan(rooms_sold) | np.isnan(x_values))
+            ax3.scatter(rooms_sold[mask], x_values[mask], alpha=0.6, color='#F18F01', s=50)
+            
+            # Fit linear trend line
+            if np.sum(mask) > 1:
+                z = np.polyfit(rooms_sold[mask], x_values[mask], 1)
+                p = np.poly1d(z)
+                ax3.plot(rooms_sold[mask], p(rooms_sold[mask]), "r--", alpha=0.8, linewidth=2, 
+                        label=f'Trend: y={z[0]:.6f}x+{z[1]:.4f}')
+            
+            ax3.set_title(f'Hubungan {rooms_sold_col} vs X', fontsize=12, fontweight='bold')
+            ax3.set_xlabel(f'{rooms_sold_col}', fontsize=10)
+            ax3.set_ylabel('Nilai X (SVR Manual)', fontsize=10)
+            ax3.legend(loc='best')
+            ax3.grid(True, alpha=0.3)
+        else:
+            ax3 = plt.subplot(2, 2, 3)
+            ax3.text(0.5, 0.5, 'Data rooms_sold tidak tersedia', 
+                    ha='center', va='center', fontsize=12, transform=ax3.transAxes)
+            ax3.set_title('Hubungan rooms_sold vs X', fontsize=12, fontweight='bold')
+        
+        # Plot 4: Scatter Plot - Hubungan rooms_available vs X
+        if rooms_available_col and rooms_available_col in self.data.columns:
+            ax4 = plt.subplot(2, 2, 4)
+            rooms_available = self.data[rooms_available_col].values
+            # Hapus NaN untuk plotting
+            mask = ~(np.isnan(rooms_available) | np.isnan(x_values))
+            ax4.scatter(rooms_available[mask], x_values[mask], alpha=0.6, color='#C73E1D', s=50)
+            
+            # Fit linear trend line
+            if np.sum(mask) > 1:
+                z = np.polyfit(rooms_available[mask], x_values[mask], 1)
+                p = np.poly1d(z)
+                ax4.plot(rooms_available[mask], p(rooms_available[mask]), "r--", alpha=0.8, linewidth=2,
+                        label=f'Trend: y={z[0]:.6f}x+{z[1]:.4f}')
+            
+            ax4.set_title(f'Hubungan {rooms_available_col} vs X', fontsize=12, fontweight='bold')
+            ax4.set_xlabel(f'{rooms_available_col}', fontsize=10)
+            ax4.set_ylabel('Nilai X (SVR Manual)', fontsize=10)
+            ax4.legend(loc='best')
+            ax4.grid(True, alpha=0.3)
+        else:
+            ax4 = plt.subplot(2, 2, 4)
+            ax4.text(0.5, 0.5, 'Data rooms_available tidak tersedia', 
+                    ha='center', va='center', fontsize=12, transform=ax4.transAxes)
+            ax4.set_title('Hubungan rooms_available vs X', fontsize=12, fontweight='bold')
+        
+        # Tambahkan statistik di title figure
+        stats_text = f"Statistik X: Min={x_values.min():.4f}, Max={x_values.max():.4f}, Mean={x_values.mean():.4f}, Std={x_values.std():.4f}"
+        fig.suptitle('Visualisasi Hasil Perhitungan Manual SVR (Bali)\n' + stats_text, 
+                    fontsize=14, fontweight='bold', y=0.995)
+        
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        
+        # Simpan gambar
+        self.result_img_dir.mkdir(parents=True, exist_ok=True)
+        img_path = self.result_img_dir / 'SVR_Manual_Bali_visualization.png'
+        plt.savefig(img_path, dpi=300, bbox_inches='tight')
+        print(f"\n[SUCCESS] Visualization saved as '{img_path}'")
+        print(f"\nStatistik Nilai X:")
+        print(f"  Minimum:  {x_values.min():.6f}")
+        print(f"  Maximum:  {x_values.max():.6f}")
+        print(f"  Mean:     {x_values.mean():.6f}")
+        print(f"  Median:   {np.median(x_values):.6f}")
+        print(f"  Std Dev:  {x_values.std():.6f}")
+        print(f"  Total:    {len(x_values)} data points")
+        
+        plt.show()
+        return True
 
 
 def main():
@@ -593,7 +675,7 @@ def main():
     file_path = root_dir / 'dataset' / 'dataset_bali_2017_2025.xlsx'
     
     # Inisialisasi
-    forecaster = SVRManual(file_path)
+    forecaster = SVRForecasting(file_path)
     
     # Step 1: Load data (sheet 1)
     if not forecaster.load_data(sheet_name=0):
@@ -634,6 +716,16 @@ def main():
         # Show explanation
         forecaster.explain_svr_calculation()
         
+        # Visualisasi hasil perhitungan manual SVR
+        print("\n" + "=" * 60)
+        print("GENERATING VISUALIZATION...")
+        print("=" * 60)
+        forecaster.visualize_manual_svr_results(
+            x_col='X',
+            rooms_sold_col=None,  # Auto-detect
+            rooms_available_col=None  # Auto-detect
+        )
+        
         # Save results to Excel (optional)
         try:
             from datetime import datetime
@@ -661,21 +753,17 @@ def main():
         except Exception as e:
             print(f"\n[NOTE] Cannot save to Excel: {str(e)}")
             print(f"   Data remains in memory and can be accessed via forecaster.data")
-        
-        # Buat file gap antara prediksi_svr (manual Excel) vs X (hasil program)
-        gap_path = forecaster.result_dataset_dir / 'gap_prediksi_svr_vs_X_bali.xlsx'
-        forecaster.create_gap_prediksi_svr_vs_X(
-            pred_col='prediksi_svr',
-            x_col='X',
-            output_file=str(gap_path)
-        )
     
     # Selesai: hanya perhitungan manual SVR dan penyimpanan hasil
     print("\n" + "=" * 60)
-    print("PROGRAM COMPLETED SUCCESSFULLY! (Manual SVR only)")
+    print("PROGRAM COMPLETED SUCCESSFULLY!")
+    print("=" * 60)
+    print(f"Hasil SVR manual (kolom 'X') telah disimpan ke result dataset.")
     print("=" * 60)
 
 
 if __name__ == "__main__":
     main()
 
+# Alias for backward compatibility
+SVRManual = SVRForecasting

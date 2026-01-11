@@ -6,42 +6,55 @@ Mode: hanya perhitungan manual SVR (kolom `X`) dan gap `prediksi_svr` vs `X`. Ti
 
 **Cell 1 — Install dependencies**
 ```python
-!pip install pandas numpy scikit-learn matplotlib openpyxl
+!pip install -r requirements.txt
 ```
 
 **Cell 2 — Ambil file dari Drive (contoh sederhana)**
 ```python
-from google.colab import drive
-import os, shutil
+import os
+import sys
 
-drive.mount('/content/drive')
+sys.path.append("/content")
 
-# Ganti path sesuai lokasi Anda
-SRC_PY = "/content/drive/MyDrive/path/to/SVR_Manual_Bali.py"
-SRC_XLSX = "/content/drive/MyDrive/path/to/dataset_bali_2017_2025.xlsx"
+required_py = "SVR_Manual_Bali.py"
 
-for src, dst in [(SRC_PY, "SVR_Manual_Bali.py"), (SRC_XLSX, "dataset_bali_2017_2025.xlsx")]:
-    if os.path.exists(src):
-        shutil.copy(src, dst)
-        print(f"[SUCCESS] Copied {src} -> {dst}")
+print("[INFO] Checking for SVR_Manual_Bali.py...")
+
+# Check if main file exists
+if os.path.exists(required_py):
+    print("[SUCCESS] SVR_Manual_Bali.py found.")
+else:
+    print("[WARNING] SVR_Manual_Bali.py not found. Searching for similar filenames...")
+
+    # Find alternative files such as SVR_Manual_Bali (1).py or similar
+    for f in os.listdir("/content"):
+        if f.startswith("SVR_Manual_Bali") and f.endswith(".py") and f != required_py:
+            os.rename(f, required_py)
+            print("[INFO] Similar Python file found and renamed to SVR_Manual_Bali.py")
+            break
     else:
-        print(f"[ERROR] File tidak ditemukan: {src}")
+        print("[ERROR] No matching Python file found. Please ensure the file has been uploaded to Colab.")
 
-print("\n[INFO] Files in /content:")
-print(os.listdir("/content"))
 ```
 
 **Cell 3 — Jalankan manual SVR & buat gap**
 ```python
-from SVR_Manual_Bali import SVRManual
-from datetime import datetime
+import importlib.util
+
+spec = importlib.util.spec_from_file_location("SVR_Manual_Bali", "SVR_Manual_Bali.py")
+mod = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(mod)
+
+SVRForecasting = mod.SVRForecasting
 
 file_path = "dataset_bali_2017_2025.xlsx"
-forecaster = SVRManual(file_path)
+forecaster = SVRForecasting(file_path)
 
+# Load data sheet pertama
 if not forecaster.load_data(sheet_name=0):
-    raise SystemExit("Gagal load data")
+    raise SystemExit("Failed to load data")
 
+# Parameter manual
 w1, w2, b = 0.01152, -0.000843, 0.02091
 
 calculation_ok = forecaster.calculate_manual_svr(
@@ -54,37 +67,30 @@ calculation_ok = forecaster.calculate_manual_svr(
 
 if calculation_ok:
     forecaster.explain_svr_calculation()
+    # Simpan dataset dengan kolom X
+    from datetime import datetime
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_file = f"dataset_bali_with_svr_{ts}.xlsx"
     forecaster.data.to_excel(output_file, index=False)
     print(f"[SUCCESS] Saved {output_file}")
-
-    forecaster.create_gap_prediksi_svr_vs_X(
-        pred_col="prediksi_svr",
-        x_col="X",
-        output_file="gap_prediksi_svr_vs_X.xlsx"
-    )
 ```
 
-**Cell 4 — Download hasil**
+**Cell 4 — Download hasil Visualisasi**
 ```python
 from google.colab import files
-import os, glob
+if calculation_ok:
+    forecaster.explain_svr_calculation()
 
-def safe_download(fn):
-    if os.path.exists(fn):
-        files.download(fn)
-        print(f"[SUCCESS] Downloaded {fn}")
-    else:
-        print(f"[WARNING] {fn} not found")
+    # Simpan visualisasi manual SVR
+    forecaster.visualize_manual_svr_results(
+        x_col="X",
+        rooms_sold_col=None,
+        rooms_available_col=None
+    )
 
-dataset_files = glob.glob("dataset_bali_with_svr_*.xlsx")
-if dataset_files:
-    safe_download(dataset_files[0])
-else:
-    print("[WARNING] dataset_bali_with_svr_*.xlsx tidak ditemukan")
-
-safe_download("gap_prediksi_svr_vs_X.xlsx")
+    # Auto-download hasil visualisasi
+    # Correcting the file path to match where the visualization was actually saved.
+    files.download("/result/img/SVR_Manual_Bali_visualization.png")
 ```
 
 ## Catatan
